@@ -1,0 +1,101 @@
+# Ensure script is run as administrator
+if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+    Write-Warning "Please run this script as an Administrator!"
+    Exit
+}
+
+# Ensure Chocolatey is installed
+if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
+    Write-Output "Installing Chocolatey..."
+    Set-ExecutionPolicy Bypass -Scope Process -Force
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+    try {
+        Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+    } catch {
+        Write-Error "Failed to install Chocolatey. Error: $_"
+        Exit
+    }
+}
+
+# Update Chocolatey
+choco upgrade chocolatey -y
+
+# Install development tools
+$devTools = @(
+    "git",
+    "vscode",
+    "pycharm-community",
+    "nodejs"
+)
+
+foreach ($tool in $devTools) {
+    Write-Output "Installing $tool..."
+    try {
+        choco install $tool -y
+    } catch {
+        Write-Warning "Failed to install $tool. Error: $_"
+    }
+}
+
+# Install Anaconda
+Write-Output "Installing Anaconda..."
+try {
+    choco install anaconda3 -y
+} catch {
+    Write-Error "Failed to install Anaconda. Error: $_"
+    Exit
+}
+
+# Install Docker Desktop
+Write-Output "Downloading Docker Desktop..."
+try {
+    Invoke-WebRequest -Uri "https://desktop.docker.com/win/stable/Docker%20Desktop%20Installer.exe" -OutFile "$env:TEMP\DockerDesktopInstaller.exe"
+    Write-Output "Installing Docker Desktop... This may take a while."
+    Start-Process "$env:TEMP\DockerDesktopInstaller.exe" -Wait -ArgumentList "install --quiet"
+    Write-Output "Docker Desktop installed. You may need to restart your computer to complete the installation."
+} catch {
+    Write-Error "Failed to install Docker Desktop. Error: $_"
+}
+
+# Add Anaconda to PATH
+$anacondaPath = "C:\tools\anaconda3;C:\tools\anaconda3\Scripts;C:\tools\anaconda3\Library\bin"
+$currentPath = [Environment]::GetEnvironmentVariable("PATH", "Machine")
+if ($currentPath -notlike "*$anacondaPath*") {
+    [Environment]::SetEnvironmentVariable("PATH", $currentPath + ";" + $anacondaPath, "Machine")
+}
+
+# Refresh environment variables
+$env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+
+# Function to install package using pip
+function Install-PipPackage($packageName) {
+    Write-Output "Installing $packageName with pip..."
+    try {
+        pip install $packageName
+        Write-Output "$packageName installed successfully with pip."
+    } catch {
+        Write-Error "Failed to install $packageName with pip. Error: $_"
+    }
+}
+
+# List of packages to install
+$packages = @(
+    "jupyter",
+    "pytest",
+    "black",
+    "keras",
+    "tensorflow",
+    "scikit-learn",
+    "flask",
+    "django",
+    "pandas",
+    "numpy",
+    "pipenv"
+)
+
+# Install each package
+foreach ($package in $packages) {
+    Install-PipPackage $package
+}
+
+Write-Output "Setup complete. Please restart your computer to ensure all changes take effect."
