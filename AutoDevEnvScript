@@ -25,7 +25,8 @@ $devTools = @(
     "git",
     "vscode",
     "pycharm-community",
-    "nodejs"
+    "nodejs",
+    "googlechrome"  # Added Chrome to the list of dev tools
 )
 
 foreach ($tool in $devTools) {
